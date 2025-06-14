@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 // Compatible with OpenZeppelin Contracts ^5.0.0
-pragma solidity ^0.8.27;
+pragma solidity ^0.8.24;
 
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ERC721Burnable} from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 // NOT PRODUCTION READY !!!
 
@@ -16,7 +17,7 @@ import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
  * @dev The contract uses OpenZeppelin's ERC721 and AccessControl for NFT functionality and role management.
  * It supports minting NFTs with a unique token URI, tracking mints per address, and blacklisting NFTs.
  */
-contract IrysNFT is ERC721, ERC721Burnable, AccessControl {
+contract IrysNFT is ERC721, ERC721Burnable, AccessControl, ReentrancyGuard {
     bytes32 public constant ADMIN_ROLE = keccak256("ADMIN_ROLE");
 
     error IrysNFT__EmptyTokenURI();
@@ -30,7 +31,7 @@ contract IrysNFT is ERC721, ERC721Burnable, AccessControl {
         address indexed creator
     );
 
-    uint256 private _nextTokenId;
+    uint256 private _nextTokenId = 0;
     uint256 public  immutable MAX_MINTS_PER_ADDRESS;
     mapping(address => mapping(string => uint256)) public mintsPerAddress;
     mapping(uint256 => string) public tokenIdToURI;
@@ -73,7 +74,7 @@ contract IrysNFT is ERC721, ERC721Burnable, AccessControl {
      * @return The ID of the newly minted NFT.
      */
     function createAndMintNFT(string memory tokenURI
-    ) public returns (uint256) {
+    ) external nonReentrant returns (uint256) {
         address creator = msg.sender;
         if (keccak256(abi.encodePacked(tokenURI)) == keccak256(abi.encodePacked(""))) {
             revert IrysNFT__EmptyTokenURI();
@@ -87,10 +88,11 @@ contract IrysNFT is ERC721, ERC721Burnable, AccessControl {
         creatorToURI[creator].push(tokenURI);
 
         uint256 tokenId = _nextTokenId++;
-        _safeMint(creator, tokenId);
+
         tokenIdToURI[tokenId] = tokenURI;
         mintsPerAddress[creator][tokenURI]++;
         NFTMintCount[tokenURI]++;
+        _safeMint(creator, tokenId);
         emit NFTCreated(tokenId, tokenURI, creator);
     
 
@@ -104,7 +106,7 @@ contract IrysNFT is ERC721, ERC721Burnable, AccessControl {
      * @param tokenURI The URI of the NFT to be minted.
      * @return The ID of the newly minted NFT.
      */
-    function mintExistingNFT(string memory tokenURI) public returns(uint256){
+    function mintExistingNFT(string memory tokenURI) external nonReentrant returns(uint256){
         if(keccak256(abi.encodePacked(tokenURI)) == keccak256(abi.encodePacked(""))) {
             revert IrysNFT__EmptyTokenURI();
         }
@@ -115,10 +117,11 @@ contract IrysNFT is ERC721, ERC721Burnable, AccessControl {
             revert IrysNFT__NFTIsBlacklisted();
         }
         uint256 tokenId = _nextTokenId++;
-        _safeMint(msg.sender, tokenId);
+
         tokenIdToURI[tokenId] = tokenURI;
         mintsPerAddress[msg.sender][tokenURI]++;
         NFTMintCount[tokenURI]++;
+        _safeMint(msg.sender, tokenId);
         return tokenId;
     }
 
@@ -126,13 +129,13 @@ contract IrysNFT is ERC721, ERC721Burnable, AccessControl {
         isNFTblacklisted[tokenURI] = status;
     }
 
-    function getTokenURI(uint256 tokenId) public view returns (string memory) {
+    function getTokenURI(uint256 tokenId) external view returns (string memory) {
         return tokenIdToURI[tokenId];
     }
-    function getCreatorURIs(address creator) public view returns (string[] memory) {
+    function getCreatorURIs(address creator) external view returns (string[] memory) {
         return creatorToURI[creator];
     }
-    function getNFTMintCount(string memory tokenURI) public view returns (uint256) {
+    function getNFTMintCount(string memory tokenURI) external view returns (uint256) {
         return NFTMintCount[tokenURI];
     }
 
