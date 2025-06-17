@@ -27,7 +27,7 @@ contract IrysNFT is ERC721, ERC721Burnable, AccessControl, ReentrancyGuard {
 
     event NFTCreated(
         uint256 indexed tokenId,
-        string tokenURI,
+        string _tokenURI,
         address indexed creator
     );
 
@@ -70,31 +70,30 @@ contract IrysNFT is ERC721, ERC721Burnable, AccessControl, ReentrancyGuard {
      * This is the function that will be called by the creator when a new NFT is to be minted.
      * It checks if the token URI is empty or already exists for the creator, and reverts if so.
      * If the token URI is valid, it mints the NFT, updates the mappings, and emits an event.
-     * @param tokenURI The URI of the NFT to be minted.
+     * @param _tokenURI The URI of the NFT to be minted.
      * @return The ID of the newly minted NFT.
      */
-    function createAndMintNFT(string memory tokenURI
+    function createAndMintNFT(string memory _tokenURI
     ) external nonReentrant returns (uint256) {
         address creator = msg.sender;
-        if (keccak256(abi.encodePacked(tokenURI)) == keccak256(abi.encodePacked(""))) {
+        if (keccak256(abi.encodePacked(_tokenURI)) == keccak256(abi.encodePacked(""))) {
             revert IrysNFT__EmptyTokenURI();
         }
         uint256 length = creatorToURI[creator].length;
         for(uint256 i = 0; i < length; i++) {
-            if (keccak256(abi.encodePacked(creatorToURI[creator][i])) == keccak256(abi.encodePacked(tokenURI))) {
+            if (keccak256(abi.encodePacked(creatorToURI[creator][i])) == keccak256(abi.encodePacked(_tokenURI))) {
                 revert IrysNFT__URIAlreadyExists();
             }
         }
-        creatorToURI[creator].push(tokenURI);
+        creatorToURI[creator].push(_tokenURI);
 
         uint256 tokenId = _nextTokenId++;
 
-        tokenIdToURI[tokenId] = tokenURI;
-        mintsPerAddress[creator][tokenURI]++;
-        NFTMintCount[tokenURI]++;
+        tokenIdToURI[tokenId] = _tokenURI;
+        mintsPerAddress[creator][_tokenURI]++;
+        NFTMintCount[_tokenURI]++;
         _safeMint(creator, tokenId);
-        emit NFTCreated(tokenId, tokenURI, creator);
-    
+        emit NFTCreated(tokenId, _tokenURI, creator);
 
         return tokenId;
     }
@@ -103,30 +102,30 @@ contract IrysNFT is ERC721, ERC721Burnable, AccessControl, ReentrancyGuard {
      * This function allows users to mint an NFT that has already been created by another user.
      * It checks if the token URI is empty, if the maximum mints per address has been exceeded,
      * and if the NFT is blacklisted. If all checks pass, it mints the NFT and updates the mappings.
-     * @param tokenURI The URI of the NFT to be minted.
+     * @param _tokenURI The URI of the NFT to be minted.
      * @return The ID of the newly minted NFT.
      */
-    function mintExistingNFT(string memory tokenURI) external nonReentrant returns(uint256){
-        if(keccak256(abi.encodePacked(tokenURI)) == keccak256(abi.encodePacked(""))) {
+    function mintExistingNFT(string memory _tokenURI) external nonReentrant returns(uint256){
+        if(keccak256(abi.encodePacked(_tokenURI)) == keccak256(abi.encodePacked(""))) {
             revert IrysNFT__EmptyTokenURI();
         }
-        if(mintsPerAddress[msg.sender][tokenURI] >= MAX_MINTS_PER_ADDRESS) {
+        if(mintsPerAddress[msg.sender][_tokenURI] >= MAX_MINTS_PER_ADDRESS) {
             revert IrysNFT__MaxMintsPerAddressExceeded();
         }
-        if(isNFTblacklisted[tokenURI]) {
+        if(isNFTblacklisted[_tokenURI]) {
             revert IrysNFT__NFTIsBlacklisted();
         }
         uint256 tokenId = _nextTokenId++;
 
-        tokenIdToURI[tokenId] = tokenURI;
-        mintsPerAddress[msg.sender][tokenURI]++;
-        NFTMintCount[tokenURI]++;
+        tokenIdToURI[tokenId] = _tokenURI;
+        mintsPerAddress[msg.sender][_tokenURI]++;
+        NFTMintCount[_tokenURI]++;
         _safeMint(msg.sender, tokenId);
         return tokenId;
     }
 
-    function setBlacklist(string memory tokenURI, bool status) external onlyRole(ADMIN_ROLE) {
-        isNFTblacklisted[tokenURI] = status;
+    function setBlacklist(string memory _tokenURI, bool status) external onlyRole(ADMIN_ROLE) {
+        isNFTblacklisted[_tokenURI] = status;
     }
 
     function getTokenURI(uint256 tokenId) external view returns (string memory) {
@@ -135,8 +134,11 @@ contract IrysNFT is ERC721, ERC721Burnable, AccessControl, ReentrancyGuard {
     function getCreatorURIs(address creator) external view returns (string[] memory) {
         return creatorToURI[creator];
     }
-    function getNFTMintCount(string memory tokenURI) external view returns (uint256) {
-        return NFTMintCount[tokenURI];
+    function getNFTMintCount(string memory _tokenURI) external view returns (uint256) {
+        return NFTMintCount[_tokenURI];
     }
 
+    function getMintsPerAddress(address creator, string memory _tokenURI) external view returns (uint256) {
+        return mintsPerAddress[creator][_tokenURI];
+    }
 }

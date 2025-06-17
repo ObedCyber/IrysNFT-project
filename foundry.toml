@@ -2,7 +2,10 @@
 src = "src"
 out = "out"
 libs = ["lib"]
+rpc_endpoints = { irys_testnet = "https://testnet-rpc.irys.xyz/v1/execution-rpc" }
+chain_id = 1270
 
 remappings = ['@openzeppelin/contracts=lib/openzeppelin-contracts/contracts']
+
 
 # See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options
